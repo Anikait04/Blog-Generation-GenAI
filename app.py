@@ -1,32 +1,65 @@
 import streamlit as st
 from langchain.prompts import PromptTemplate
-from langchain_community.llms import CTransformers
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 # Function to get response from the LLaMA model
 def get_llama_response(input_text, no_words, blog_style):
-    llm = CTransformers(
-        model="LLM/llama-2-7b-chat.Q8_0.gguf",
-        model_type='llama',
-        config={'max_new_tokens': int(no_words),
-                'temperature': 0.01}
-    )
+
+    # Create the model
+    safety_settings = [
+    {
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "BLOCK_LOW_AND_ABOVE",  # Or BLOCK_MEDIUM_AND_ABOVE, BLOCK_ONLY_HIGH, BLOCK_NONE
+    },
+    {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+    },
+     {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+    },
+    {
+        "category": "HARM_CATEGORY_HARASSMENT",
+       "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+    }]
+
+    generation_config = {
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "top_k": 40,
+    "max_output_tokens": 8192,
+    "response_mime_type": "text/plain",
+    }
     
     # Prompt template
     template = """
-    Write a blog for a {blog_style} job profile on the topic "{input_text}"
-    with approximately {no_words} words.
+    "Compose a blog post on the topic of '{input_text}' with a professional and straightforward style, aiming for approximately {no_words} words. The blog post should prioritize factual accuracy and present information concisely and clearly. Avoid colloquialisms, informal language, and overly casual phrasing. Focus on delivering the essential information regarding the topic using verifiable data and key concepts. The tone should be objective and authoritative, reflecting a focus on facts and clear communication, rather than subjective opinions or personal anecdotes "
     """
     
     prompt = PromptTemplate(
         input_variables=["blog_style", "no_words", "input_text"],
-        template=template
+        template=template,
+        safety_settings=safety_settings
     )
-
-    # Generate response from LLaMA model
-    response = llm(prompt.format(blog_style=blog_style,
+    
+    model = genai.GenerativeModel(
+    model_name="gemini-2.0-flash-exp",
+    generation_config=generation_config,
+    safety_settings=safety_settings
+    
+    )
+    
+    user_prompt=prompt.format(blog_style=blog_style,
                                  input_text=input_text,
-                                 no_words=no_words))
-    return response
+                                 no_words=no_words)
+    # Generate response from LLaMA model
+    response = model.generate_content(user_prompt)
+    return response.text
 
 # Streamlit app configuration
 st.set_page_config(page_title="Generate Blogs",
