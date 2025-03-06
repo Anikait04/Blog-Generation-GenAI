@@ -1,8 +1,5 @@
-sentence-transformers
-uvicorn
-ctransformers
-langchain
-python-box
 streamlit
-loadenv
-google.generativeai
+google-generativeai
+langchain
+python-dotenv
+pyperclip
